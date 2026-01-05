@@ -220,14 +220,19 @@ impl MdnsSocket {
         if let Some(ref socket) = self.ipv4_socket {
             use std::mem::MaybeUninit;
             
-            // Create a buffer of MaybeUninit for socket2
-            let mut uninit_buf: Vec<MaybeUninit<u8>> = vec![MaybeUninit::uninit(); buf.len()];
-            let (size, addr) = socket.recv_from(&mut uninit_buf)?;
+            // Safety: MaybeUninit<u8> has same layout as u8
+            // We create a slice of MaybeUninit from the existing buffer
+            let uninit_buf = unsafe {
+                std::slice::from_raw_parts_mut(
+                    buf.as_mut_ptr() as *mut MaybeUninit<u8>,
+                    buf.len()
+                )
+            };
             
-            // Copy initialized data to output buffer
-            for (i, byte) in uninit_buf.iter().take(size).enumerate() {
-                buf[i] = unsafe { byte.assume_init() };
-            }
+            let (size, addr) = socket.recv_from(uninit_buf)?;
+            
+            // Data is now initialized up to size bytes
+            // No need to copy - the data is already in buf
             
             let socket_addr = match addr.as_socket() {
                 Some(addr) => addr,
@@ -244,14 +249,19 @@ impl MdnsSocket {
         if let Some(ref socket) = self.ipv6_socket {
             use std::mem::MaybeUninit;
             
-            // Create a buffer of MaybeUninit for socket2
-            let mut uninit_buf: Vec<MaybeUninit<u8>> = vec![MaybeUninit::uninit(); buf.len()];
-            let (size, addr) = socket.recv_from(&mut uninit_buf)?;
+            // Safety: MaybeUninit<u8> has same layout as u8
+            // We create a slice of MaybeUninit from the existing buffer
+            let uninit_buf = unsafe {
+                std::slice::from_raw_parts_mut(
+                    buf.as_mut_ptr() as *mut MaybeUninit<u8>,
+                    buf.len()
+                )
+            };
             
-            // Copy initialized data to output buffer
-            for (i, byte) in uninit_buf.iter().take(size).enumerate() {
-                buf[i] = unsafe { byte.assume_init() };
-            }
+            let (size, addr) = socket.recv_from(uninit_buf)?;
+            
+            // Data is now initialized up to size bytes
+            // No need to copy - the data is already in buf
             
             let socket_addr = match addr.as_socket() {
                 Some(addr) => addr,
