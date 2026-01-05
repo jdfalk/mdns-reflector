@@ -123,8 +123,6 @@ impl Reflector {
         let _service_cache = Arc::clone(&self.service_cache);
         let _rate_limiter = Arc::clone(&self.rate_limiter);
 
-        // We need to convert Socket to std::net::UdpSocket for tokio
-        // For now, we'll use a simplified approach
         tokio::spawn(async move {
             info!(
                 "Receiver task started for {} (IPv{})",
@@ -132,12 +130,26 @@ impl Reflector {
                 if is_ipv6 { 6 } else { 4 }
             );
 
-            // This would be the main packet receiving loop
-            // In a real implementation, we'd use tokio::net::UdpSocket
-            // For now, this is a placeholder
+            // TODO: Implement actual packet reception and reflection
+            // 
+            // The full implementation would:
+            // 1. Convert socket2::Socket to tokio::net::UdpSocket or use async I/O
+            // 2. Set up a receive buffer (e.g., 9000 bytes for jumbo frames)
+            // 3. Loop to receive packets:
+            //    a. Await packet from socket
+            //    b. Parse mDNS packet
+            //    c. Apply filters (rate limit, service filters, MAC filters)
+            //    d. Check for duplicate packets (loop prevention)
+            //    e. Rewrite TTL if needed
+            //    f. Send to other interfaces via reflector.reflect_packet()
+            //    g. Update service cache if enabled
+            // 4. Handle errors and reconnect if needed
+            //
+            // This is a placeholder that prevents the task from exiting
+            // A production implementation would use async socket operations
             loop {
-                tokio::time::sleep(Duration::from_secs(1)).await;
-                // TODO: Implement actual packet reception and reflection
+                tokio::time::sleep(Duration::from_secs(60)).await;
+                trace!("Receiver task heartbeat for {}", interface_name);
             }
         })
     }
@@ -256,9 +268,34 @@ impl Reflector {
     }
 
     /// Check if reflection is allowed between two interfaces based on zones
-    async fn is_reflection_allowed(&self, _source: &str, _target: &str) -> bool {
-        // TODO: Implement zone-based reflection rules
-        true
+    async fn is_reflection_allowed(&self, source: &str, target: &str) -> bool {
+        // If no zones are configured, allow all reflections
+        if self.config.zones.is_empty() {
+            return true;
+        }
+
+        // Find zones for source and target interfaces
+        let source_zone = self.config.zones.iter().find(|z| z.interfaces.iter().any(|i| i == source));
+        let target_zone = self.config.zones.iter().find(|z| z.interfaces.iter().any(|i| i == target));
+
+        match (source_zone, target_zone) {
+            (Some(src_zone), Some(tgt_zone)) => {
+                // Check if source zone allows communication with target zone
+                if src_zone.allowed_zones.is_empty() {
+                    // Empty allowed_zones means allow all
+                    return true;
+                }
+                src_zone.allowed_zones.contains(&tgt_zone.name)
+            }
+            (None, None) => {
+                // Both interfaces not in any zone - allow if no zones configured
+                true
+            }
+            _ => {
+                // One interface is in a zone, the other is not - deny
+                false
+            }
+        }
     }
 }
 

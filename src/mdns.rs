@@ -138,9 +138,15 @@ impl MdnsPacket {
     }
 
     /// Get the source MAC address from raw packet data if available
+    /// 
+    /// Note: MAC address extraction requires raw socket access at the Ethernet layer.
+    /// Since this implementation operates at the IP layer (UDP sockets), MAC addresses
+    /// are not directly available. For MAC-based filtering, use the configuration file
+    /// to specify device MAC addresses and VLAN pools, which will be matched against
+    /// the source IP address via ARP table lookups (future enhancement).
     pub fn extract_mac_address(&self) -> Option<String> {
-        // In a real implementation, this would parse the Ethernet frame
-        // For now, we return None as we're working at IP layer
+        // TODO: Implement MAC address lookup via ARP table
+        // For now, MAC filtering is done through configuration-based VLAN pools
         None
     }
 }
@@ -153,13 +159,14 @@ fn extract_service_type(name: &Name) -> Option<String> {
     if name_str.contains("._tcp.local") {
         // Extract the service part (e.g., _airplay._tcp)
         let parts: Vec<&str> = name_str.split('.').collect();
+        // For "_airplay._tcp.local.", parts = ["_airplay", "_tcp", "local", ""]
         if parts.len() >= 3 {
-            return Some(format!("{}._tcp", parts[parts.len() - 4]));
+            return Some(format!("{}._tcp", parts[0]));
         }
     } else if name_str.contains("._udp.local") {
         let parts: Vec<&str> = name_str.split('.').collect();
         if parts.len() >= 3 {
-            return Some(format!("{}._udp", parts[parts.len() - 4]));
+            return Some(format!("{}._udp", parts[0]));
         }
     }
 
