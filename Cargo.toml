@@ -1,0 +1,48 @@
+[package]
+name = "mdns-reflector"
+version = "0.1.0"
+edition = "2021"
+authors = ["mdns-reflector contributors"]
+description = "A secure, high-performance multicast DNS reflector written in Rust"
+license = "Apache-2.0"
+repository = "https://github.com/jdfalk/mdns-reflector"
+keywords = ["mdns", "reflector", "bonjour", "networking", "multicast"]
+categories = ["network-programming"]
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+
+# Networking
+socket2 = { version = "0.5", features = ["all"] }
+pnet = "0.35"
+pnet_datalink = "0.35"
+
+# DNS protocol
+trust-dns-proto = "0.23"
+
+# Configuration
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
+clap = { version = "4.4", features = ["derive", "env"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Network utilities
+if-addrs = "0.13"
+mac_address = "1.1"
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

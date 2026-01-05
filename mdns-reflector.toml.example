@@ -1,0 +1,120 @@
+# mDNS Reflector Configuration File
+# 
+# This is an example configuration file for mdns-reflector.
+# Copy this file to /etc/mdns-reflector/mdns-reflector.toml and customize as needed.
+
+# Network interfaces to reflect mDNS traffic between
+# These can be physical interfaces, VLANs, or any network interface
+interfaces = ["eth0", "eth1"]
+
+# General settings
+[settings]
+# Enable IPv4 reflection (multicast to 224.0.0.251:5353)
+enable_ipv4 = true
+
+# Enable IPv6 reflection (multicast to ff02::fb:5353)
+enable_ipv6 = true
+
+# Maximum TTL for reflected packets (seconds)
+# Packets with higher TTLs will be rewritten to this value
+max_ttl = 255
+
+# Rate limit in packets per second (0 = unlimited)
+# Helps prevent network flooding
+rate_limit = 150
+
+# Enable loop prevention
+# Prevents packets from being reflected infinitely
+loop_prevention = true
+
+# Enable service caching
+# Caches discovered services for improved performance
+enable_cache = true
+
+# Cache TTL in seconds
+# How long to keep cached service information
+cache_ttl = 300
+
+# Zone-based configuration (optional)
+# Zones allow you to group interfaces and control which zones can communicate
+
+[[zones]]
+name = "trusted"
+interfaces = ["eth0"]
+# This zone can communicate with "iot" and "guest" zones
+allowed_zones = ["iot", "guest"]
+
+[[zones]]
+name = "iot"
+interfaces = ["eth1"]
+# IoT devices can only communicate with trusted zone
+allowed_zones = ["trusted"]
+
+[[zones]]
+name = "guest"
+interfaces = ["wlan0"]
+# Guest network can only communicate with trusted zone
+allowed_zones = ["trusted"]
+
+# Device-specific rules with MAC address filtering (optional)
+# Control exactly which devices can have their mDNS traffic reflected
+# and to which VLANs
+
+[devices."AA:BB:CC:DD:EE:FF"]
+description = "Living Room Chromecast"
+# VLAN where this device resides
+origin_pool = 100
+# VLANs where this device should be discoverable
+shared_pools = [10, 20]
+enabled = true
+
+[devices."11:22:33:44:55:66"]
+description = "Network Printer - HP LaserJet"
+origin_pool = 10
+shared_pools = [10, 100, 200]
+enabled = true
+
+[devices."00:AA:BB:CC:DD:EE"]
+description = "Apple TV - Family Room"
+origin_pool = 100
+shared_pools = [10]
+enabled = true
+
+# Service filtering rules (optional)
+# Control which mDNS service types are allowed or denied
+
+[[service_filters]]
+# Allow AirPlay services in trusted and IoT zones
+service_type = "_airplay._tcp"
+action = "allow"
+zones = ["trusted", "iot"]
+
+[[service_filters]]
+# Allow printer services in trusted zone
+service_type = "_ipp._tcp"
+action = "allow"
+zones = ["trusted"]
+
+[[service_filters]]
+# Allow Chromecast services
+service_type = "_googlecast._tcp"
+action = "allow"
+zones = ["trusted", "iot"]
+
+[[service_filters]]
+# Allow HomeKit services
+service_type = "_hap._tcp"
+action = "allow"
+zones = ["trusted", "iot"]
+
+[[service_filters]]
+# Deny SSH service discovery (security)
+service_type = "_ssh._tcp"
+action = "deny"
+zones = []
+
+[[service_filters]]
+# Allow HTTP services
+service_type = "_http._tcp"
+action = "allow"
+zones = ["trusted"]
