@@ -160,12 +160,12 @@ fn extract_service_type(name: &Name) -> Option<String> {
         // Extract the service part (e.g., _airplay._tcp)
         let parts: Vec<&str> = name_str.split('.').collect();
         // For "_airplay._tcp.local.", parts = ["_airplay", "_tcp", "local", ""]
-        if parts.len() >= 3 {
+        if parts.len() >= 3 && !parts[0].is_empty() {
             return Some(format!("{}._tcp", parts[0]));
         }
     } else if name_str.contains("._udp.local") {
         let parts: Vec<&str> = name_str.split('.').collect();
-        if parts.len() >= 3 {
+        if parts.len() >= 3 && !parts[0].is_empty() {
             return Some(format!("{}._udp", parts[0]));
         }
     }

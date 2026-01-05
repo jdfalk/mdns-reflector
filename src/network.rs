@@ -73,6 +73,24 @@ pub struct MdnsSocket {
     pub interface: InterfaceInfo,
 }
 
+/// Helper function to safely convert a mutable byte slice to MaybeUninit slice
+/// 
+/// # Safety
+/// 
+/// This is safe because:
+/// 1. MaybeUninit<u8> has the same size and alignment as u8 (guaranteed by Rust)
+/// 2. MaybeUninit<T> is #[repr(transparent)] over T
+/// 3. A slice of initialized u8 can be safely viewed as MaybeUninit<u8>
+/// 4. The socket will initialize the bytes it writes to
+/// 5. We only read the initialized portion (up to size returned by recv_from)
+#[inline]
+unsafe fn as_maybe_uninit_slice(buf: &mut [u8]) -> &mut [std::mem::MaybeUninit<u8>] {
+    std::slice::from_raw_parts_mut(
+        buf.as_mut_ptr() as *mut std::mem::MaybeUninit<u8>,
+        buf.len()
+    )
+}
+
 impl MdnsSocket {
     /// Create a new mDNS socket for an interface
     pub fn new(interface: InterfaceInfo, enable_ipv4: bool, enable_ipv6: bool) -> Result<Self> {
@@ -218,16 +236,8 @@ impl MdnsSocket {
     /// Receive data from IPv4 socket
     pub fn recv_ipv4(&self, buf: &mut [u8]) -> Result<(usize, SocketAddr)> {
         if let Some(ref socket) = self.ipv4_socket {
-            use std::mem::MaybeUninit;
-            
-            // Safety: MaybeUninit<u8> has same layout as u8
-            // We create a slice of MaybeUninit from the existing buffer
-            let uninit_buf = unsafe {
-                std::slice::from_raw_parts_mut(
-                    buf.as_mut_ptr() as *mut MaybeUninit<u8>,
-                    buf.len()
-                )
-            };
+            // Convert buffer to MaybeUninit slice for socket2 API
+            let uninit_buf = unsafe { as_maybe_uninit_slice(buf) };
             
             let (size, addr) = socket.recv_from(uninit_buf)?;
             
@@ -247,16 +257,8 @@ impl MdnsSocket {
     /// Receive data from IPv6 socket
     pub fn recv_ipv6(&self, buf: &mut [u8]) -> Result<(usize, SocketAddr)> {
         if let Some(ref socket) = self.ipv6_socket {
-            use std::mem::MaybeUninit;
-            
-            // Safety: MaybeUninit<u8> has same layout as u8
-            // We create a slice of MaybeUninit from the existing buffer
-            let uninit_buf = unsafe {
-                std::slice::from_raw_parts_mut(
-                    buf.as_mut_ptr() as *mut MaybeUninit<u8>,
-                    buf.len()
-                )
-            };
+            // Convert buffer to MaybeUninit slice for socket2 API
+            let uninit_buf = unsafe { as_maybe_uninit_slice(buf) };
             
             let (size, addr) = socket.recv_from(uninit_buf)?;
             

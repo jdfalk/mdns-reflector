@@ -116,6 +116,14 @@ pub struct Settings {
     /// Cache TTL in seconds
     #[serde(default = "default_cache_ttl")]
     pub cache_ttl: u64,
+
+    /// Cache cleanup interval in seconds
+    #[serde(default = "default_cache_cleanup_interval")]
+    pub cache_cleanup_interval: u64,
+
+    /// Packet cache TTL in seconds (for loop prevention)
+    #[serde(default = "default_packet_cache_ttl")]
+    pub packet_cache_ttl: u64,
 }
 
 impl Default for Settings {
@@ -128,6 +136,8 @@ impl Default for Settings {
             loop_prevention: true,
             enable_cache: true,
             cache_ttl: 300,
+            cache_cleanup_interval: 60,
+            packet_cache_ttl: 2,
         }
     }
 }
@@ -188,6 +198,14 @@ fn default_max_ttl() -> u32 {
 
 fn default_cache_ttl() -> u64 {
     300
+}
+
+fn default_cache_cleanup_interval() -> u64 {
+    60
+}
+
+fn default_packet_cache_ttl() -> u64 {
+    2
 }
 
 /// Validate MAC address format
