@@ -57,10 +57,12 @@ impl Reflector {
 
         info!("Created {} network sockets", sockets.len());
 
+        let packet_cache_ttl = Duration::from_secs(config.settings.packet_cache_ttl);
+
         Ok(Self {
             config: Arc::new(config),
             sockets,
-            packet_cache: Arc::new(RwLock::new(PacketCache::new())),
+            packet_cache: Arc::new(RwLock::new(PacketCache::new(packet_cache_ttl))),
             service_cache: Arc::new(RwLock::new(ServiceCache::new())),
             rate_limiter: Arc::new(RwLock::new(RateLimiter::new())),
         })
@@ -158,10 +160,11 @@ impl Reflector {
     fn spawn_cache_cleanup_task(&self) -> tokio::task::JoinHandle<()> {
         let packet_cache = Arc::clone(&self.packet_cache);
         let service_cache = Arc::clone(&self.service_cache);
+        let cleanup_interval = self.config.settings.cache_cleanup_interval;
 
         tokio::spawn(async move {
             loop {
-                tokio::time::sleep(Duration::from_secs(60)).await;
+                tokio::time::sleep(Duration::from_secs(cleanup_interval)).await;
                 packet_cache.write().await.cleanup();
                 service_cache.write().await.cleanup();
                 trace!("Cache cleanup completed");
@@ -306,10 +309,10 @@ struct PacketCache {
 }
 
 impl PacketCache {
-    fn new() -> Self {
+    fn new(max_age: Duration) -> Self {
         Self {
             cache: HashMap::new(),
-            max_age: Duration::from_secs(2),
+            max_age,
         }
     }
 
